@@ -102,7 +102,7 @@ export default function App() {
                 {stocks.length} stocks
               </span>
             </div>
-            {!loading && <ThemeMetrics stocks={stocks} data={data} themeName={activeTab} lastUpdate={lastUpdate} onRefresh={refresh} />}
+            {!loading && <ThemeMetrics stocks={stocks} data={data} themeName={activeTab} lastUpdate={lastUpdate} />}
           </div>
         )}
       </main>

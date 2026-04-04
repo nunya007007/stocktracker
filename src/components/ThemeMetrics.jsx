@@ -1,6 +1,6 @@
 import Scorecard from './Scorecard.jsx'
 
-export default function ThemeMetrics({ stocks, data, themeName, lastUpdate, onRefresh }) {
+export default function ThemeMetrics({ stocks, data, themeName, lastUpdate }) {
   if (!data || !stocks || stocks.length === 0) {
     return <div style={{ color: 'var(--text-muted)', padding: '20px' }}>Loading data...</div>
   }
@@ -39,32 +39,9 @@ export default function ThemeMetrics({ stocks, data, themeName, lastUpdate, onRe
 
   return (
     <>
-      {/* Timestamp + refresh button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, fontSize: 12, color: 'var(--text-secondary)' }}>
-        <span>Indicators updated: {formatTime(lastUpdate)}</span>
-        <button
-          onClick={onRefresh}
-          style={{
-            padding: '6px 12px',
-            fontSize: 12,
-            color: 'var(--blue-text)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            background: 'transparent',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-          onMouseOver={(e) => {
-            e.target.style.borderColor = 'var(--blue-text)'
-            e.target.style.background = 'rgba(96, 165, 250, 0.1)'
-          }}
-          onMouseOut={(e) => {
-            e.target.style.borderColor = 'var(--border)'
-            e.target.style.background = 'transparent'
-          }}
-        >
-          Refresh Prices
-        </button>
+      {/* Timestamp */}
+      <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--text-secondary)' }}>
+        Indicators updated: {formatTime(lastUpdate)}
       </div>
 
       {/* Summary metrics */}
