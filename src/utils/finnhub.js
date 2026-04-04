@@ -1,10 +1,7 @@
 import { CONFIG } from '../data/config.js'
 
 const BASE = 'https://finnhub.io/api/v1'
-
-function getKey() {
-  return CONFIG.finnhubApiKey || import.meta.env.VITE_FINNHUB_API_KEY || ''
-}
+const KEY  = CONFIG.finnhubApiKey
 
 // Simple rate-limited queue — max 1 call per 100ms (10/sec, well under 60/min)
 const queue = []
@@ -31,9 +28,7 @@ function enqueue(fn) {
 }
 
 async function get(path) {
-  const key = getKey()
-  if (!key) throw new Error('Finnhub API key not configured')
-  const res = await fetch(`${BASE}${path}&token=${key}`)
+  const res = await fetch(`${BASE}${path}&token=${KEY}`)
   if (!res.ok) throw new Error(`Finnhub ${res.status}: ${path}`)
   return res.json()
 }

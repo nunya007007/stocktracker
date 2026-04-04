@@ -38,5 +38,5 @@ export const CONFIG = {
     VOO:  "Vanguard S&P 500 ETF",
   },
   portfolio: [],
-  finnhubApiKey: import.meta.env.VITE_FINNHUB_API_KEY || "",
+  finnhubApiKey: "d784fopr01qsamsiun6gd784fopr01qsamsiun70",
 }
