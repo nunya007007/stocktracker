@@ -28,7 +28,9 @@ function enqueue(fn) {
 }
 
 async function get(path) {
+  console.log('🔍 API Request:', { BASE, KEY: KEY ? '✓ set' : '✗ missing', path })
   const res = await fetch(`${BASE}${path}&token=${KEY}`)
+  console.log('📊 API Response:', res.status, res.statusText)
   if (!res.ok) throw new Error(`Finnhub ${res.status}: ${path}`)
   return res.json()
 }

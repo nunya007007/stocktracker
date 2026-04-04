@@ -12,6 +12,7 @@ export function useStockData(stocks) {
   const abortRef = useRef(false)
 
   const fetchAll = useCallback(async () => {
+    console.log('📈 useStockData.fetchAll called with stocks:', stocks?.length)
     if (!stocks?.length) { setLoading(false); return }
     abortRef.current = false
     setLoading(true)
