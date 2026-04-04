@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-const FINNHUB_API_KEY = import.meta.env.VITE_FINNHUB_API_KEY
+const TWELVEDATA_API_KEY = import.meta.env.VITE_TWELVEDATA_API_KEY
 const QUOTE_CACHE = {} // Browser-side, no TTL (always fresh on page load)
 const QUOTE_QUEUE = []
 let QUEUE_PROCESSING = false
@@ -13,17 +13,22 @@ async function processQuoteQueue() {
     const { ticker, resolve } = QUOTE_QUEUE.shift()
     try {
       const res = await fetch(
-        `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_API_KEY}`
+        `https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${TWELVEDATA_API_KEY}`
       )
       if (res.ok) {
         const quote = await res.json()
-        resolve({
-          price: quote.c || 0,
-          changePct: quote.dp || 0,
-          high: quote.h || 0,
-          low: quote.l || 0,
-          volume: quote.v || 0,
-        })
+        if (quote.status === 'ok') {
+          resolve({
+            price: quote.close || 0,
+            changePct: quote.percent_change || 0,
+            high: quote.high || 0,
+            low: quote.low || 0,
+            volume: quote.volume || 0,
+          })
+        } else {
+          console.warn(`TwelveData error for ${ticker}:`, quote.status)
+          resolve(null)
+        }
       } else {
         resolve(null)
       }

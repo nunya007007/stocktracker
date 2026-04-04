@@ -1,9 +1,9 @@
-// Vercel Cron Function - Triggered at 4 PM CT (US market close) and 4 AM CT (Asia/Europe close)
-// Pulls daily candles for all 200 stocks, calculates indicators, stores in KV
+// Vercel Cron Function - Triggered at 12 PM CT and 4 PM CT
+// Pulls daily candles from TwelveData, calculates indicators, stores in KV
 
 import { kv } from '@vercel/kv'
 
-const FINNHUB_API_KEY = process.env.VITE_FINNHUB_API_KEY || process.env.FINNHUB_API_KEY
+const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY
 const CACHE_KEY = 'indicators:latest'
 const TIMESTAMP_KEY = 'indicators:lastUpdate'
 
@@ -37,11 +37,28 @@ const STOCKS = [
 async function fetchCandles(ticker) {
   try {
     const res = await fetch(
-      `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&count=252&token=${FINNHUB_API_KEY}`
+      `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=252&apikey=${TWELVEDATA_API_KEY}`
     )
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error(`TwelveData error for ${ticker}:`, res.status, res.statusText)
+      return null
+    }
     const data = await res.json()
-    return data.c ? { closes: data.c, highs: data.h, lows: data.l, volumes: data.v } : null
+    
+    // Check for API errors
+    if (data.status !== 'ok' || !data.values || data.values.length === 0) {
+      console.error(`No data for ${ticker}:`, data.status)
+      return null
+    }
+
+    // TwelveData returns newest first, need to reverse for chronological order
+    const values = data.values.reverse()
+    const closes = values.map(v => parseFloat(v.close))
+    const highs = values.map(v => parseFloat(v.high))
+    const lows = values.map(v => parseFloat(v.low))
+    const volumes = values.map(v => parseFloat(v.volume))
+
+    return { closes, highs, lows, volumes }
   } catch (e) {
     console.error(`Failed to fetch ${ticker}:`, e.message)
     return null

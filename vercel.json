@@ -5,11 +5,11 @@
   "crons": [
     {
       "path": "/api/cron/refresh-indicators",
-      "schedule": "0 16 * * *"
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/cron/refresh-indicators",
-      "schedule": "0 4 * * *"
+      "schedule": "0 16 * * *"
     }
   ]
 }
