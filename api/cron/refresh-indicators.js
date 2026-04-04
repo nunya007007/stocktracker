@@ -138,7 +138,7 @@ export default async function handler(req, res) {
 
   try {
     console.log('📈 Starting indicator refresh...')
-    console.log('🔑 API Key present:', FINNHUB_API_KEY ? 'yes' : 'NO - THIS IS THE PROBLEM')
+    console.log('🔑 TwelveData API Key present:', TWELVEDATA_API_KEY ? 'yes' : 'NO - THIS IS THE PROBLEM')
     console.log('📦 KV connection:', kv ? 'ok' : 'failed')
 
     const processedStocks = new Set()  // Track what's been processed THIS run
