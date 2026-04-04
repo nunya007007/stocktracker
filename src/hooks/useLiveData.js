@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getMockStockData } from '../utils/mockData.js'
 
 const FINNHUB_API_KEY = import.meta.env.VITE_FINNHUB_API_KEY
 const QUOTE_CACHE = {} // Browser-side, no TTL (always fresh on page load)
@@ -53,7 +52,7 @@ export function useLiveData(stocks) {
   const [loading, setLoading] = useState(true)
   const [progress, setProgress] = useState(0)
 
-  // Fetch cached indicators from cron job, fall back to mock data
+  // Fetch cached indicators from cron job
   const fetchIndicators = useCallback(async () => {
     try {
       const res = await fetch('/api/indicators')
@@ -66,17 +65,8 @@ export function useLiveData(stocks) {
     } catch (e) {
       console.error('Failed to fetch indicators:', e)
     }
-
-    // Fallback to mock data if cron hasn't run yet
-    console.log('ℹ️ Using mock data (waiting for first cron run at 4 PM CT)')
-    const mockData = {}
-    stocks.forEach(stock => {
-      mockData[stock.ticker] = getMockStockData(stock.ticker)
-    })
-    setIndicators(mockData)
-    setLastUpdate(new Date(new Date().getTime() - 24 * 60 * 60 * 1000)) // Show as "stale"
-    return mockData
-  }, [stocks])
+    return {}
+  }, [])
 
   // Fetch live quotes for all stocks
   const fetchQuotes = useCallback(async (indicatorData) => {
