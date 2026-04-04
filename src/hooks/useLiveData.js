@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
 const TWELVEDATA_API_KEY = import.meta.env.VITE_TWELVEDATA_API_KEY
+console.log('🔑 TwelveData API Key:', TWELVEDATA_API_KEY ? 'present' : 'MISSING')
 const QUOTE_CACHE = {} // Browser-side, no TTL (always fresh on page load)
 const QUOTE_QUEUE = []
 let QUEUE_PROCESSING = false
@@ -12,11 +13,20 @@ async function processQuoteQueue() {
   while (QUOTE_QUEUE.length > 0) {
     const { ticker, resolve } = QUOTE_QUEUE.shift()
     try {
-      const res = await fetch(
-        `https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${TWELVEDATA_API_KEY}`
-      )
+      if (!TWELVEDATA_API_KEY) {
+        console.error(`❌ No API key for ${ticker}`)
+        resolve(null)
+        return
+      }
+      
+      const url = `https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${TWELVEDATA_API_KEY}`
+      console.log(`💰 Fetching quote for ${ticker}`)
+      
+      const res = await fetch(url)
       if (res.ok) {
         const quote = await res.json()
+        console.log(`💰 Quote response for ${ticker}:`, quote.status || 'no status')
+        
         if (quote.status === 'ok') {
           resolve({
             price: quote.close || 0,
@@ -26,14 +36,15 @@ async function processQuoteQueue() {
             volume: quote.volume || 0,
           })
         } else {
-          console.warn(`TwelveData error for ${ticker}:`, quote.status)
+          console.warn(`❌ TwelveData error for ${ticker}:`, quote.status, quote)
           resolve(null)
         }
       } else {
+        console.error(`❌ HTTP error for ${ticker}:`, res.status)
         resolve(null)
       }
     } catch (e) {
-      console.error(`Quote fetch failed for ${ticker}:`, e)
+      console.error(`❌ Quote fetch failed for ${ticker}:`, e)
       resolve(null)
     }
     // 100ms delay between requests to stay under rate limit
@@ -60,12 +71,19 @@ export function useLiveData(stocks) {
   // Fetch cached indicators from cron job
   const fetchIndicators = useCallback(async () => {
     try {
+      console.log('📊 Fetching indicators from /api/indicators')
       const res = await fetch('/api/indicators')
+      console.log('📊 Indicators response status:', res.status)
+      
       if (res.ok) {
         const data = await res.json()
+        console.log('📊 Indicators data received:', Object.keys(data.data || {}).length, 'stocks')
         setIndicators(data.data)
         setLastUpdate(new Date(data.lastUpdate))
         return data.data
+      } else {
+        const error = await res.text()
+        console.error('📊 Indicators API error:', res.status, error)
       }
     } catch (e) {
       console.error('Failed to fetch indicators:', e)
