@@ -7,19 +7,28 @@ const FINNHUB_API_KEY = process.env.VITE_FINNHUB_API_KEY
 const CACHE_KEY = 'indicators:latest'
 const TIMESTAMP_KEY = 'indicators:lastUpdate'
 
-// Stock list - US NASDAQ/NYSE only (Finnhub free tier limitation)
-// Note: International exchanges (*.T, *.AS, *.PA, *.DE) require paid Finnhub tier
+// Stock list (hardcoded to avoid import issues in serverless environment)
 const STOCKS = [
+  { ticker: "4062.T",  name: "Ibiden" },
+  { ticker: "6857.T",  name: "Advantest" },
   { ticker: "AMKR",    name: "Amkor Technology" },
   { ticker: "KLAC",    name: "KLA Corp" },
   { ticker: "AIP",     name: "Arteris" },
   { ticker: "ASML",    name: "ASML" },
+  { ticker: "6146.T",  name: "Disco Corp" },
   { ticker: "RMBS",    name: "Rambus" },
+  { ticker: "BESI.AS", name: "BE Semiconductor" },
   { ticker: "AVGO",    name: "Broadcom" },
   { ticker: "LSCC",    name: "Lattice Semiconductor" },
+  { ticker: "2802.T",  name: "Ajinomoto Co" },
   { ticker: "ARM",     name: "Arm Holdings" },
   { ticker: "CDNS",    name: "Cadence Design Systems" },
   { ticker: "MRVL",    name: "Marvell Technology" },
+  { ticker: "HO.PA",   name: "Thales" },
+  { ticker: "IFX.DE",  name: "Infineon Technologies" },
+  { ticker: "6526.T",  name: "Socionext" },
+  { ticker: "SOI.PA",  name: "Soitec" },
+  { ticker: "SIE.DE",  name: "Siemens" },
   { ticker: "NXPI",    name: "NXP Semiconductors" },
   { ticker: "SNPS",    name: "Synopsys" },
   { ticker: "QCOM",    name: "Qualcomm" },
