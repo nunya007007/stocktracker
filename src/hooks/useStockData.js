@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getMockStockData } from '../utils/mockData.js'
-// import { getStockCandles } from '../utils/finnhub.js'
-// import { deriveMetrics } from '../utils/indicators.js'
 
 const CACHE = {}
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
