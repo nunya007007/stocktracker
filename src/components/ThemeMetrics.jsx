@@ -1,12 +1,19 @@
-export default function ThemeMetrics({ stocks, data, themeName }) {
-  const entries = stocks.map(s => data[s.ticker]).filter(Boolean)
-  if (!entries.length) return null
+import Scorecard from './Scorecard.jsx'
 
-  const avg12m = entries.reduce((a, b) => a + (b.return12m ?? 0), 0) / entries.length
-  const avgRSI = entries.reduce((a, b) => a + (b.rsi ?? 50), 0) / entries.length
+export default function ThemeMetrics({ stocks, data, themeName }) {
+  if (!data || !stocks || stocks.length === 0) {
+    return <div style={{ color: 'var(--text-muted)', padding: '20px' }}>Loading data...</div>
+  }
+  
+  const entries = stocks.map(s => ({ stock: s, metrics: data[s.ticker] })).filter(e => e.metrics)
+  if (!entries.length) return <div style={{ color: 'var(--text-muted)', padding: '20px' }}>No data available</div>
+
+  const metricsData = entries.map(e => e.metrics)
+  const avg12m = metricsData.reduce((a, b) => a + (b.return12m ?? 0), 0) / metricsData.length
+  const avgRSI = metricsData.reduce((a, b) => a + (b.rsi ?? 50), 0) / metricsData.length
   const ewIndex = parseFloat((100 * (1 + avg12m / 100)).toFixed(1))
-  const bullCount = entries.filter(e => e.trend === 'Bullish').length
-  const bearCount = entries.filter(e => e.trend === 'Bearish').length
+  const bullCount = metricsData.filter(e => e.trend === 'Bullish').length
+  const bearCount = metricsData.filter(e => e.trend === 'Bearish').length
   const trend = bullCount > bearCount ? 'Bullish' : bearCount > bullCount ? 'Bearish' : 'Neutral'
 
   const metrics = [
@@ -22,20 +29,26 @@ export default function ThemeMetrics({ stocks, data, themeName }) {
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
-      {metrics.map(m => (
-        <div key={m.label} style={{
-          background: 'var(--bg-card)', border: '0.5px solid var(--border)',
-          borderRadius: 'var(--radius)', padding: '12px 14px',
-        }}>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, fontFamily: 'var(--font-display)', letterSpacing: '0.03em' }}>
-            {m.label}
+    <>
+      {/* Summary metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24 }}>
+        {metrics.map(m => (
+          <div key={m.label} style={{
+            background: 'var(--bg-card)', border: '0.5px solid var(--border)',
+            borderRadius: 'var(--radius)', padding: '12px 14px',
+          }}>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6, fontFamily: 'var(--font-display)', letterSpacing: '0.03em' }}>
+              {m.label}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 600, color: m.color, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-display)' }}>
+              {m.value}
+            </div>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 600, color: m.color, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-display)' }}>
-            {m.value}
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      {/* Scorecard table */}
+      <Scorecard stocks={stocks} data={data} />
+    </>
   )
 }
