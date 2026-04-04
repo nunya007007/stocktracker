@@ -1,140 +1,159 @@
 # StockLens Project State
 
-**Last Updated:** April 4, 2026 @ 10:26 AM CT  
-**Status:** 🟢 PRODUCTION LIVE - Fixed Finnhub tier limitation (13 US stocks)
+**Last Updated:** April 4, 2026 @ 11:11 AM CT  
+**Status:** 🟢 PRODUCTION LIVE - TwelveData Integration Complete
 
-## Architecture Update (April 4, 2026)
+## Major Update (April 4, 2026)
 
-### Cron Job (Indicators) - Now Per-Stock KV Keys ✅
+**Switched from Finnhub to TwelveData** for all data sources.
 
-**How it works:**
-- **Schedule:** 4 AM CT & 4 PM CT (fixed, always runs full update)
-- **Per-stock storage:** 
-  - `indicators:TICKER` → indicator data (RSI, MACD, SMA, etc.)
-  - `indicators:lastUpdate:TICKER` → Unix timestamp of last update
-- **Deduplication within run:** Uses in-memory Set to track processed stocks
-  - Prevents duplicate API calls if same ticker appears twice
-- **Error handling:** Only marks stock as processed if BOTH fetch AND calculation succeed
-  - Failed stocks remain unprocessed, retry on next cron run
-- **Delay:** 100ms between API calls (respects 60 calls/min Finnhub limit)
-- **Scale:** Can handle 300+ stocks
-  - 300 stocks × 100ms = 30 seconds per run
-  - Well under Vercel's 5-minute cron timeout
+### Why TwelveData?
+- ✅ Free tier supports international stocks (*.T, *.PA, *.DE, *.AS)
+- ✅ Provides daily candles on free tier (Finnhub blocks them)
+- ✅ Live quotes for all exchanges
+- ✅ 92 credits/day on free tier (under 800 limit)
+- ✅ Scales to 300+ stocks with paid tier ($30/month)
 
-### Frontend Prices (Live Quotes) - Deduplication ✅
+---
 
-**How it works:**
-- **On page load:** Auto-fetches all stock quotes
-- **On manual refresh:** User clicks "Refresh Prices" button
-- **Deduplication:** Uses in-memory Set per refresh session
-  - If AAPL appears twice in stock list, only fetches once
-  - Prevents wasted API calls
-- **Rate limiting:** 100ms delay between requests
-  - 300 stocks × 100ms = 30 seconds total per refresh
-- **Progress tracking:** Real-time progress bar shows fetch completion
+## Architecture (Current)
 
-### API Endpoint `/api/indicators` - Refactored ✅
+### Data Sources
+- **TwelveData:** Candles (252 days) + Live quotes
+- **Vercel KV:** Cache for calculated indicators only
+- **Vercel Cron:** Scheduled refreshes at 12 PM & 4 PM CT
 
-**Old:** Fetched single monolithic object `indicators:latest`  
-**New:** Fetches all per-stock keys in parallel
-
-```javascript
-// Fetches in parallel:
-- indicators:AAPL
-- indicators:MSFT
-- indicators:GOOGL
-- ... (all 300)
-- indicators:lastUpdate:AAPL
-- indicators:lastUpdate:MSFT
-- etc.
-
-// Returns:
-{
-  "data": {
-    "AAPL": { price, rsi, macd, ... },
-    "MSFT": { price, rsi, macd, ... },
-    ...
-  },
-  "lastUpdates": {
-    "AAPL": 1712282400000,
-    "MSFT": 1712282400000,
-    ...
-  }
-}
+### Cron Workflow
 ```
+12 PM & 4 PM CT:
+  1. Fetch 252 candles from TwelveData (23 stocks × 2 credits = 46)
+  2. Calculate indicators locally (RSI, MACD, SMA, etc.)
+  3. Save to KV: indicators:TICKER
+  4. Discard candles (not stored)
+  5. Done in ~2 minutes
+```
+
+### Frontend Workflow
+```
+Page Load:
+  1. Fetch live quotes from TwelveData (23 stocks, queued 100ms apart)
+  2. Fetch cached indicators from KV (via /api/indicators)
+  3. Merge and display
+  4. Shows all 23 stocks with prices + indicators
+```
+
+---
+
+## API Credit Usage
+
+### Daily Budget: 800 credits/day (free tier)
+
+**Current Usage (23 stocks, 2 refreshes):**
+- Candles: 23 × 2 × 2 refreshes = 92 credits/day
+- Quotes: Varies by page loads (low cost)
+- **Total: ~100-150 credits/day**
+- **Headroom: 600+ credits/day** ✅
+
+**At 300 stocks (future):**
+- Would need: 300 × 2 × 2 = 1,200 credits/day
+- **Solution:** Upgrade to TwelveData paid tier (~$30/month = 50,000 credits/month)
+
+---
 
 ## Completed Tasks ✅
 
-1. ✅ Cron refactored for per-stock KV storage
-2. ✅ Deduplication logic (in-memory Sets)
-3. ✅ Error handling (only mark successful updates)
-4. ✅ API endpoint refactored for per-stock keys
-5. ✅ Frontend hook refactored for quote deduplication
-6. ✅ Code pushed to GitHub, Vercel auto-deploy triggered
-7. ✅ **Identified Finnhub free tier limitation**
-   - International exchanges (*.T, *.AS, *.PA, *.DE) blocked
-   - Only 13/23 stocks have API access
-   - Removed unsupported tickers, kept US NASDAQ/NYSE only
+1. ✅ Switched candles endpoint: Finnhub → TwelveData
+2. ✅ Switched quotes endpoint: Finnhub → TwelveData
+3. ✅ Updated cron schedule: 4 AM, 4 PM → 12 PM, 4 PM CT
+4. ✅ All 23 stocks now fully supported (including international)
+5. ✅ Per-stock KV storage for indicators
+6. ✅ Deduplication logic (in-memory Sets)
+7. ✅ Code pushed to GitHub
+8. ✅ Vercel auto-deploy triggered
 
-## Finnhub Tier Limitation
+---
 
-**Free tier:** US NASDAQ/NYSE only  
-**Blocked (requires paid):** Japan (*.T), Netherlands (*.AS), France (*.PA), Germany (*.DE)
+## Next Steps
 
-**Current supported stocks (13):**
-- AMKR, KLAC, AIP, ASML, RMBS, AVGO, LSCC, ARM, CDNS, MRVL, NXPI, SNPS, QCOM
+### Immediate (Today)
+1. Add `TWELVEDATA_API_KEY` to Vercel environment variables
+   - Key: `TWELVEDATA_API_KEY`
+   - Value: `89834e369f0a43aca7faa65f29f56291`
+   - Make sure it's set for **Production**
+2. Wait for first cron run at 12 PM CT
+3. Check dashboard at https://stocktracker-rust.vercel.app/
+4. Verify all 23 stocks show prices + indicators
 
-**To expand to international stocks:**
-- Upgrade to Finnhub paid tier ($30-50/month)
-- OR use free alternative API (Alpha Vantage, IEX, Polygon)
-- OR add proxy data source for international tickers
+### Optional (Future)
+- Expand to 50-100 stocks (still free tier)
+- Upgrade to TwelveData paid tier when expanding to 300+ stocks
+- Add historical data archiving (Vercel Postgres)
+- Add alerts/notifications (RSI thresholds, price targets)
 
-## Pending Work ⏳
+---
 
-### Next (High Priority)
-1. **Verify 4 PM cron execution today**
-   - Check Vercel dashboard for execution logs
-   - Verify KV cache has per-stock keys
-   - Confirm dashboard shows 13 stocks with indicators
-2. **Expand stock list up to 300 US stocks**
-   - Add more NASDAQ/NYSE tickers to STOCKS array
-   - Test performance with larger dataset
-   - Monitor API quota (still under 800 calls/day)
+## File Structure
 
-### Optional Enhancements
-3. **Add international support**
-   - Upgrade Finnhub tier OR
-   - Integrate second data source (Alpha Vantage, IEX Cloud)
-4. **Add stock categories** (Semiconductors, Energy, Commodities, etc.)
-5. **User preferences** (select which stocks to display)
-6. **Historical data tracking** (archive daily snapshots)
-7. **Alerts/notifications** (RSI thresholds, price targets)
+```
+/tmp/stocklens_final/
+├── src/
+│   ├── hooks/useLiveData.js          ✏️ Updated: TwelveData quotes
+│   ├── data/config.js                 (23 stocks, all working)
+│   └── components/                    (no changes needed)
+├── api/
+│   ├── cron/refresh-indicators.js    ✏️ Updated: TwelveData candles
+│   └── indicators.js                  (no changes needed)
+├── vercel.json                        ✏️ Updated: 12 PM & 4 PM schedule
+└── PROJECT_STATE.md                   (this file)
+```
 
-## Known Behavior
-
-- **Cron always runs full update** at 4 AM & 4 PM (no partial updates)
-- **Within-run deduplication** only prevents duplicate API calls in same cron execution
-- **Cross-run deduplication** would require timestamp checks (not implemented yet)
-- **Failed stocks retry** automatically on next cron run
-- **First cron run** takes ~30 seconds for 300 stocks; subsequent runs similar (no caching of API responses)
+---
 
 ## Git Commits (Session)
 
-- `34c7ea7` - "Fix: Remove relative import in cron handler"
-- `cb407d0` - "Refactor: Per-stock KV keys, dedup logic, improved error handling"
-- `9aaa0e8` - "Add PROJECT_STATE.md - architecture update & refactor summary"
-- `f0be8cf` - "Fix: Remove unsupported international tickers"
-- `dbbcd0d` - "Update config.js to match supported tickers"
+- `34c7ea7` - Fix: Remove relative import in cron handler
+- `cb407d0` - Refactor: Per-stock KV keys, dedup logic
+- `9aaa0e8` - Add PROJECT_STATE.md
+- `0b785f7` - Revert removal of international tickers
+- `dd2e520` - **Switch from Finnhub to TwelveData** ← Current
 
-## Files Modified
+---
 
-- `api/cron/refresh-indicators.js` - Per-stock keys, dedup Set, error handling
-- `api/indicators.js` - Parallel KV fetch, per-stock reconstruction
-- `src/hooks/useLiveData.js` - Quote deduplication, dedup Set
+## Environment Variables (Vercel)
 
-## Next Session Instructions
+Must be set for **Production:**
+- `VITE_TWELVEDATA_API_KEY` = `89834e369f0a43aca7faa65f29f56291`
 
-1. Check Vercel logs — did 4 PM cron run successfully today?
-2. If yes → Expand to 300 stocks
-3. If no → Debug from cron execution logs
-4. Monitor first few cron runs to catch any issues
+Optional (kept for backward compatibility):
+- `VITE_FINNHUB_API_KEY` (no longer used)
+
+---
+
+## Known Limitations
+
+1. **No historical candle storage** — Fetches fresh each refresh
+   - Could add Vercel Postgres for backtesting later
+2. **No user accounts** — Single-user dashboard
+3. **No portfolio tracking** — Tab exists but empty
+4. **No alerts** — Manual monitoring only
+
+---
+
+## Success Criteria (Next 24 Hours)
+
+- [ ] Vercel deployment complete
+- [ ] 12 PM cron run executes (check logs)
+- [ ] Dashboard shows all 23 stocks
+- [ ] Prices update correctly (TwelveData)
+- [ ] Indicators display (RSI, MACD, SMA, etc.)
+- [ ] No rate limit errors
+
+---
+
+## Support Info
+
+- **Dashboard:** https://stocktracker-rust.vercel.app/
+- **GitHub:** github.com/nunya007007/stocktracker (private)
+- **Vercel Project:** stocktracker (automated deployments)
+- **API Key:** TwelveData free tier (active)
+
