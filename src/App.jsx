@@ -6,6 +6,8 @@ import PortfolioView from './components/PortfolioView.jsx'
 import LoadingBar from './components/LoadingBar.jsx'
 import './index.css'
 
+// Cache bust: force rebuild
+
 const THEME_NAMES = Object.keys(CONFIG.themes)
 const ALL_TABS = [...THEME_NAMES, 'Portfolio']
 
