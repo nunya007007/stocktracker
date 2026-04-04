@@ -3,7 +3,7 @@
 
 import { kv } from '@vercel/kv'
 
-const FINNHUB_API_KEY = process.env.VITE_FINNHUB_API_KEY
+const FINNHUB_API_KEY = process.env.VITE_FINNHUB_API_KEY || process.env.FINNHUB_API_KEY
 const CACHE_KEY = 'indicators:latest'
 const TIMESTAMP_KEY = 'indicators:lastUpdate'
 
@@ -115,11 +115,14 @@ function calculateIndicators(candles) {
 export default async function handler(req, res) {
   // Verify cron secret (Vercel provides this)
   if (req.headers['x-vercel-cron-secret'] !== process.env.CRON_SECRET) {
+    console.error('❌ Cron secret mismatch or missing')
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
   try {
     console.log('📈 Starting indicator refresh...')
+    console.log('🔑 API Key present:', FINNHUB_API_KEY ? 'yes' : 'NO - THIS IS THE PROBLEM')
+    console.log('📦 KV connection:', kv ? 'ok' : 'failed')
 
     const processedStocks = new Set()  // Track what's been processed THIS run
     let successCount = 0
