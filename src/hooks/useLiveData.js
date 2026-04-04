@@ -68,15 +68,28 @@ export function useLiveData(stocks) {
     return {}
   }, [])
 
-  // Fetch live quotes for all stocks
+  // Fetch live quotes for all stocks with deduplication
   const fetchQuotes = useCallback(async (indicatorData) => {
     const results = {}
+    const fetchedInThisSession = new Set()  // Track what we've fetched
+    
     for (let i = 0; i < stocks.length; i++) {
       const stock = stocks[i]
+      
+      // Skip if already fetched in this refresh session
+      if (fetchedInThisSession.has(stock.ticker)) {
+        console.log(`⏭️  Already fetched: ${stock.ticker}`)
+        continue
+      }
+      
       const quote = await fetchQuoteQueued(stock.ticker)
       if (quote) {
         results[stock.ticker] = quote
       }
+      
+      // Mark as fetched
+      fetchedInThisSession.add(stock.ticker)
+      
       setProgress(Math.round(((i + 1) / stocks.length) * 100))
       setQuotes(prev => ({ ...prev, [stock.ticker]: quote }))
     }

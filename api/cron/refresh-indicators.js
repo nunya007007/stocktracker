@@ -121,35 +121,65 @@ export default async function handler(req, res) {
   try {
     console.log('📈 Starting indicator refresh...')
 
-    const indicators = {}
+    const processedStocks = new Set()  // Track what's been processed THIS run
     let successCount = 0
+    let failedCount = 0
+    const timestamp = Date.now()
 
     // Fetch candles and calculate indicators for each stock
     for (const stock of STOCKS) {
-      const candles = await fetchCandles(stock.ticker)
-      if (candles) {
-        const metrics = calculateIndicators(candles)
-        if (metrics) {
-          indicators[stock.ticker] = metrics
-          successCount++
-        }
+      // Skip if already processed in this cron run (safety check)
+      if (processedStocks.has(stock.ticker)) {
+        console.log(`⏭️  Already processed: ${stock.ticker}`)
+        continue
       }
-      // Small delay to avoid rate limiting
+
+      // Fetch candles
+      const candles = await fetchCandles(stock.ticker)
+      if (!candles) {
+        console.error(`❌ Failed to fetch candles for ${stock.ticker}`)
+        failedCount++
+        continue  // Don't mark as processed - retry next run
+      }
+
+      // Calculate indicators
+      const metrics = calculateIndicators(candles)
+      if (!metrics) {
+        console.error(`❌ Failed to calculate indicators for ${stock.ticker}`)
+        failedCount++
+        continue  // Don't mark as processed - retry next run
+      }
+
+      // Save to KV (per-stock keys)
+      await kv.set(
+        `indicators:${stock.ticker}`,
+        JSON.stringify(metrics),
+        { ex: 86400 * 7 }  // 7 day retention
+      )
+      await kv.set(
+        `indicators:lastUpdate:${stock.ticker}`,
+        timestamp,
+        { ex: 86400 * 7 }
+      )
+
+      // Mark as successfully processed
+      processedStocks.add(stock.ticker)
+      successCount++
+
+      console.log(`✅ Updated ${stock.ticker}`)
+
+      // Delay to respect rate limit
       await new Promise(resolve => setTimeout(resolve, 100))
     }
 
-    // Store in Vercel KV
-    const timestamp = new Date().toISOString()
-    await kv.set(CACHE_KEY, JSON.stringify(indicators), { ex: 86400 * 7 }) // 7 day retention
-    await kv.set(TIMESTAMP_KEY, timestamp, { ex: 86400 * 7 })
-
-    console.log(`✅ Refreshed ${successCount}/${STOCKS.length} stocks`)
+    console.log(`📊 Complete: ${successCount} succeeded, ${failedCount} failed`)
 
     res.status(200).json({
       success: true,
       refreshed: successCount,
+      failed: failedCount,
       total: STOCKS.length,
-      timestamp,
+      timestamp: new Date(timestamp).toISOString(),
     })
   } catch (error) {
     console.error('❌ Cron failed:', error)
