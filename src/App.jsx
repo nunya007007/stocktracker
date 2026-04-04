@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { CONFIG } from './data/config.js'
+import { useStockData } from './hooks/useStockData.js'
 import ThemeMetrics from './components/ThemeMetrics.jsx'
 import PortfolioView from './components/PortfolioView.jsx'
+import LoadingBar from './components/LoadingBar.jsx'
 import './index.css'
 
 const THEME_NAMES = Object.keys(CONFIG.themes)
@@ -9,9 +11,9 @@ const ALL_TABS = [...THEME_NAMES, 'Portfolio']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(THEME_NAMES[0])
-  const [viewMode, setViewMode] = useState('table') // 'table' is default
 
   const stocks = activeTab !== 'Portfolio' ? (CONFIG.themes[activeTab] ?? []) : []
+  const { data, loading, progress } = useStockData(stocks)
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -91,6 +93,7 @@ export default function App() {
           <PortfolioView />
         ) : (
           <div key={activeTab} className="fade-in">
+            {loading && <LoadingBar progress={progress} />}
             <div style={{ marginBottom: 20, display: 'flex', alignItems: 'baseline', gap: 10 }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em' }}>
                 {activeTab}
@@ -99,7 +102,7 @@ export default function App() {
                 {stocks.length} stocks
               </span>
             </div>
-            <ThemeMetrics stocks={stocks} themeName={activeTab} />
+            {!loading && <ThemeMetrics stocks={stocks} data={data} themeName={activeTab} />}
           </div>
         )}
       </main>
