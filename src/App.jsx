@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { CONFIG } from './data/config.js'
-import ThemeView from './components/ThemeView.jsx'
 import ThemeMetrics from './components/ThemeMetrics.jsx'
 import PortfolioView from './components/PortfolioView.jsx'
 import './index.css'
@@ -10,7 +9,7 @@ const ALL_TABS = [...THEME_NAMES, 'Portfolio']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(THEME_NAMES[0])
-  const [viewMode, setViewMode] = useState('cards') // 'cards' or 'table'
+  const [viewMode, setViewMode] = useState('table') // 'table' is default
 
   const stocks = activeTab !== 'Portfolio' ? (CONFIG.themes[activeTab] ?? []) : []
 
@@ -92,51 +91,15 @@ export default function App() {
           <PortfolioView />
         ) : (
           <div key={activeTab} className="fade-in">
-            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em' }}>
-                  {activeTab}
-                </h1>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {stocks.length} stocks
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => setViewMode('cards')}
-                  style={{
-                    padding: '6px 12px', borderRadius: 4,
-                    fontSize: 11, fontWeight: viewMode === 'cards' ? 600 : 400,
-                    background: viewMode === 'cards' ? 'var(--accent)' : 'var(--bg-card)',
-                    color: viewMode === 'cards' ? '#fff' : 'var(--text-secondary)',
-                    border: '0.5px solid var(--border)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                  title="Card view"
-                >
-                  ⊞ Cards
-                </button>
-                <button
-                  onClick={() => setViewMode('table')}
-                  style={{
-                    padding: '6px 12px', borderRadius: 4,
-                    fontSize: 11, fontWeight: viewMode === 'table' ? 600 : 400,
-                    background: viewMode === 'table' ? 'var(--accent)' : 'var(--bg-card)',
-                    color: viewMode === 'table' ? '#fff' : 'var(--text-secondary)',
-                    border: '0.5px solid var(--border)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                  title="Table view"
-                >
-                  ▦ Table
-                </button>
-              </div>
+            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em' }}>
+                {activeTab}
+              </h1>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {stocks.length} stocks
+              </span>
             </div>
-            {viewMode === 'cards' ? (
-              <ThemeView stocks={stocks} themeName={activeTab} />
-            ) : (
-              <ThemeMetrics stocks={stocks} themeName={activeTab} />
-            )}
+            <ThemeMetrics stocks={stocks} themeName={activeTab} />
           </div>
         )}
       </main>
