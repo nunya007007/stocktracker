@@ -95,17 +95,16 @@ export function useLiveData(stocks) {
   }, [fetchIndicators, fetchQuotes])
 
   // Merge indicator data with live quotes
+  // Show quotes even without indicators (show what we have)
   const mergedData = {}
   stocks.forEach(stock => {
     const ind = indicators[stock.ticker]
     const quote = quotes[stock.ticker]
-    if (ind && quote) {
+    if (ind || quote) {
       mergedData[stock.ticker] = {
         ...ind,
-        ...quote, // Quote price overrides stale indicator price
+        ...quote, // Quote price overrides indicator price
       }
-    } else if (ind) {
-      mergedData[stock.ticker] = ind
     }
   })
 
