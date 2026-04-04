@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { CONFIG } from './data/config.js'
-import { useStockData } from './hooks/useStockData.js'
+import { useLiveData } from './hooks/useLiveData.js'
 import ThemeMetrics from './components/ThemeMetrics.jsx'
 import PortfolioView from './components/PortfolioView.jsx'
 import LoadingBar from './components/LoadingBar.jsx'
 import './index.css'
-
-// Cache bust: force rebuild
 
 const THEME_NAMES = Object.keys(CONFIG.themes)
 const ALL_TABS = [...THEME_NAMES, 'Portfolio']
@@ -15,7 +13,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(THEME_NAMES[0])
 
   const stocks = activeTab !== 'Portfolio' ? (CONFIG.themes[activeTab] ?? []) : []
-  const { data, loading, progress } = useStockData(stocks)
+  const { data, loading, progress, lastUpdate, refresh } = useLiveData(stocks)
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -104,7 +102,7 @@ export default function App() {
                 {stocks.length} stocks
               </span>
             </div>
-            {!loading && <ThemeMetrics stocks={stocks} data={data} themeName={activeTab} />}
+            {!loading && <ThemeMetrics stocks={stocks} data={data} themeName={activeTab} lastUpdate={lastUpdate} onRefresh={refresh} />}
           </div>
         )}
       </main>

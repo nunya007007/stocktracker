@@ -1,5 +1,15 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/cron/refresh-indicators",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-indicators",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }

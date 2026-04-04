@@ -1,8 +1,17 @@
 import Scorecard from './Scorecard.jsx'
 
-export default function ThemeMetrics({ stocks, data, themeName }) {
+export default function ThemeMetrics({ stocks, data, themeName, lastUpdate, onRefresh }) {
   if (!data || !stocks || stocks.length === 0) {
     return <div style={{ color: 'var(--text-muted)', padding: '20px' }}>Loading data...</div>
+  }
+
+  const formatTime = (date) => {
+    if (!date) return 'Never'
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
   }
   
   const entries = stocks.map(s => ({ stock: s, metrics: data[s.ticker] })).filter(e => e.metrics)
@@ -30,6 +39,34 @@ export default function ThemeMetrics({ stocks, data, themeName }) {
 
   return (
     <>
+      {/* Timestamp + refresh button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, fontSize: 12, color: 'var(--text-secondary)' }}>
+        <span>Indicators updated: {formatTime(lastUpdate)}</span>
+        <button
+          onClick={onRefresh}
+          style={{
+            padding: '6px 12px',
+            fontSize: 12,
+            color: 'var(--blue-text)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            background: 'transparent',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+          onMouseOver={(e) => {
+            e.target.style.borderColor = 'var(--blue-text)'
+            e.target.style.background = 'rgba(96, 165, 250, 0.1)'
+          }}
+          onMouseOut={(e) => {
+            e.target.style.borderColor = 'var(--border)'
+            e.target.style.background = 'transparent'
+          }}
+        >
+          Refresh Prices
+        </button>
+      </div>
+
       {/* Summary metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 24 }}>
         {metrics.map(m => (
