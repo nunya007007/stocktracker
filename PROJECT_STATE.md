@@ -1,7 +1,7 @@
 # StockLens Project State
 
-**Last Updated:** April 4, 2026 @ 10:22 AM CT  
-**Status:** 🟢 PRODUCTION LIVE - Refactored for 300+ stock support
+**Last Updated:** April 4, 2026 @ 10:26 AM CT  
+**Status:** 🟢 PRODUCTION LIVE - Fixed Finnhub tier limitation (13 US stocks)
 
 ## Architecture Update (April 4, 2026)
 
@@ -71,22 +71,40 @@
 4. ✅ API endpoint refactored for per-stock keys
 5. ✅ Frontend hook refactored for quote deduplication
 6. ✅ Code pushed to GitHub, Vercel auto-deploy triggered
+7. ✅ **Identified Finnhub free tier limitation**
+   - International exchanges (*.T, *.AS, *.PA, *.DE) blocked
+   - Only 13/23 stocks have API access
+   - Removed unsupported tickers, kept US NASDAQ/NYSE only
+
+## Finnhub Tier Limitation
+
+**Free tier:** US NASDAQ/NYSE only  
+**Blocked (requires paid):** Japan (*.T), Netherlands (*.AS), France (*.PA), Germany (*.DE)
+
+**Current supported stocks (13):**
+- AMKR, KLAC, AIP, ASML, RMBS, AVGO, LSCC, ARM, CDNS, MRVL, NXPI, SNPS, QCOM
+
+**To expand to international stocks:**
+- Upgrade to Finnhub paid tier ($30-50/month)
+- OR use free alternative API (Alpha Vantage, IEX, Polygon)
+- OR add proxy data source for international tickers
 
 ## Pending Work ⏳
 
 ### Next (High Priority)
-1. **Wait for Vercel deployment** (~5 min from push)
-2. **Monitor 4 PM cron execution today**
+1. **Verify 4 PM cron execution today**
    - Check Vercel dashboard for execution logs
    - Verify KV cache has per-stock keys
-   - Confirm dashboard shows indicators
-3. **Expand stock list to 300 stocks**
-   - Update STOCKS array in both:
-     - `api/cron/refresh-indicators.js`
-     - `api/indicators.js`
-   - Test performance
+   - Confirm dashboard shows 13 stocks with indicators
+2. **Expand stock list up to 300 US stocks**
+   - Add more NASDAQ/NYSE tickers to STOCKS array
+   - Test performance with larger dataset
+   - Monitor API quota (still under 800 calls/day)
 
 ### Optional Enhancements
+3. **Add international support**
+   - Upgrade Finnhub tier OR
+   - Integrate second data source (Alpha Vantage, IEX Cloud)
 4. **Add stock categories** (Semiconductors, Energy, Commodities, etc.)
 5. **User preferences** (select which stocks to display)
 6. **Historical data tracking** (archive daily snapshots)
@@ -104,6 +122,9 @@
 
 - `34c7ea7` - "Fix: Remove relative import in cron handler"
 - `cb407d0` - "Refactor: Per-stock KV keys, dedup logic, improved error handling"
+- `9aaa0e8` - "Add PROJECT_STATE.md - architecture update & refactor summary"
+- `f0be8cf` - "Fix: Remove unsupported international tickers"
+- `dbbcd0d` - "Update config.js to match supported tickers"
 
 ## Files Modified
 
