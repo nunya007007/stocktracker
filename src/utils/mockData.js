@@ -6,7 +6,8 @@ function generateMockCandles(symbol) {
   const now = Math.floor(Date.now() / 1000)
   let price = 100 + Math.random() * 200
 
-  for (let i = 400; i > 0; i--) {
+  // Generate 252 candles (1 year of trading days) instead of 400
+  for (let i = 252; i > 0; i--) {
     const timestamp = now - (i * 86400)
     const dailyChangePercent = (Math.random() - 0.5) * 4 // -2% to +2%
     const open = price
