@@ -2,11 +2,37 @@
 // Pulls daily candles for all 200 stocks, calculates indicators, stores in KV
 
 import { kv } from '@vercel/kv'
-import { CONFIG } from '../../src/data/config.js'
 
 const FINNHUB_API_KEY = process.env.VITE_FINNHUB_API_KEY
 const CACHE_KEY = 'indicators:latest'
 const TIMESTAMP_KEY = 'indicators:lastUpdate'
+
+// Stock list (hardcoded to avoid import issues in serverless environment)
+const STOCKS = [
+  { ticker: "4062.T",  name: "Ibiden" },
+  { ticker: "6857.T",  name: "Advantest" },
+  { ticker: "AMKR",    name: "Amkor Technology" },
+  { ticker: "KLAC",    name: "KLA Corp" },
+  { ticker: "AIP",     name: "Arteris" },
+  { ticker: "ASML",    name: "ASML" },
+  { ticker: "6146.T",  name: "Disco Corp" },
+  { ticker: "RMBS",    name: "Rambus" },
+  { ticker: "BESI.AS", name: "BE Semiconductor" },
+  { ticker: "AVGO",    name: "Broadcom" },
+  { ticker: "LSCC",    name: "Lattice Semiconductor" },
+  { ticker: "2802.T",  name: "Ajinomoto Co" },
+  { ticker: "ARM",     name: "Arm Holdings" },
+  { ticker: "CDNS",    name: "Cadence Design Systems" },
+  { ticker: "MRVL",    name: "Marvell Technology" },
+  { ticker: "HO.PA",   name: "Thales" },
+  { ticker: "IFX.DE",  name: "Infineon Technologies" },
+  { ticker: "6526.T",  name: "Socionext" },
+  { ticker: "SOI.PA",  name: "Soitec" },
+  { ticker: "SIE.DE",  name: "Siemens" },
+  { ticker: "NXPI",    name: "NXP Semiconductors" },
+  { ticker: "SNPS",    name: "Synopsys" },
+  { ticker: "QCOM",    name: "Qualcomm" },
+]
 
 async function fetchCandles(ticker) {
   try {
@@ -95,19 +121,11 @@ export default async function handler(req, res) {
   try {
     console.log('📈 Starting indicator refresh...')
 
-    // Get all stocks from config
-    const allStocks = Object.values(CONFIG.themes)
-      .flat()
-      .reduce((acc, stock) => {
-        if (!acc.find(s => s.ticker === stock.ticker)) acc.push(stock)
-        return acc
-      }, [])
-
     const indicators = {}
     let successCount = 0
 
     // Fetch candles and calculate indicators for each stock
-    for (const stock of allStocks) {
+    for (const stock of STOCKS) {
       const candles = await fetchCandles(stock.ticker)
       if (candles) {
         const metrics = calculateIndicators(candles)
@@ -125,12 +143,12 @@ export default async function handler(req, res) {
     await kv.set(CACHE_KEY, JSON.stringify(indicators), { ex: 86400 * 7 }) // 7 day retention
     await kv.set(TIMESTAMP_KEY, timestamp, { ex: 86400 * 7 })
 
-    console.log(`✅ Refreshed ${successCount}/${allStocks.length} stocks`)
+    console.log(`✅ Refreshed ${successCount}/${STOCKS.length} stocks`)
 
     res.status(200).json({
       success: true,
       refreshed: successCount,
-      total: allStocks.length,
+      total: STOCKS.length,
       timestamp,
     })
   } catch (error) {
