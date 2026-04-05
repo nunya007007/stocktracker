@@ -1,11 +1,9 @@
 // Vercel Cron Function - Triggered at 12 PM CT and 4 PM CT
-// Pulls daily candles from TwelveData, calculates indicators, stores in KV
+// Pulls daily candles from TwelveData, calculates indicators, stores in Postgres
 
-import { kv } from '@vercel/kv'
+import { sql } from '@vercel/postgres'
 
 const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY
-const CACHE_KEY = 'indicators:latest'
-const TIMESTAMP_KEY = 'indicators:lastUpdate'
 
 // Stock list (hardcoded to avoid import issues in serverless environment)
 const STOCKS = [
@@ -139,16 +137,24 @@ export default async function handler(req, res) {
   try {
     console.log('📈 Starting indicator refresh...')
     console.log('🔑 TwelveData API Key present:', TWELVEDATA_API_KEY ? 'yes' : 'NO - THIS IS THE PROBLEM')
-    console.log('📦 KV connection:', kv ? 'ok' : 'failed')
 
-    const processedStocks = new Set()  // Track what's been processed THIS run
+    // Create table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS stock_indicators (
+        ticker VARCHAR(20) PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+
+    const processedStocks = new Set()
     let successCount = 0
     let failedCount = 0
-    const timestamp = Date.now()
+    const timestamp = new Date().toISOString()
 
     // Fetch candles and calculate indicators for each stock
     for (const stock of STOCKS) {
-      // Skip if already processed in this cron run (safety check)
+      // Skip if already processed in this cron run
       if (processedStocks.has(stock.ticker)) {
         console.log(`⏭️  Already processed: ${stock.ticker}`)
         continue
@@ -159,7 +165,7 @@ export default async function handler(req, res) {
       if (!candles) {
         console.error(`❌ Failed to fetch candles for ${stock.ticker}`)
         failedCount++
-        continue  // Don't mark as processed - retry next run
+        continue
       }
 
       // Calculate indicators
@@ -167,20 +173,16 @@ export default async function handler(req, res) {
       if (!metrics) {
         console.error(`❌ Failed to calculate indicators for ${stock.ticker}`)
         failedCount++
-        continue  // Don't mark as processed - retry next run
+        continue
       }
 
-      // Save to KV (per-stock keys)
-      await kv.set(
-        `indicators:${stock.ticker}`,
-        JSON.stringify(metrics),
-        { ex: 86400 * 7 }  // 7 day retention
-      )
-      await kv.set(
-        `indicators:lastUpdate:${stock.ticker}`,
-        timestamp,
-        { ex: 86400 * 7 }
-      )
+      // Save to Postgres (upsert)
+      await sql`
+        INSERT INTO stock_indicators (ticker, data, updated_at)
+        VALUES (${stock.ticker}, ${JSON.stringify(metrics)}, ${timestamp})
+        ON CONFLICT (ticker) 
+        DO UPDATE SET data = ${JSON.stringify(metrics)}, updated_at = ${timestamp}
+      `
 
       // Mark as successfully processed
       processedStocks.add(stock.ticker)
@@ -199,7 +201,7 @@ export default async function handler(req, res) {
       refreshed: successCount,
       failed: failedCount,
       total: STOCKS.length,
-      timestamp: new Date(timestamp).toISOString(),
+      timestamp,
     })
   } catch (error) {
     console.error('❌ Cron failed:', error)

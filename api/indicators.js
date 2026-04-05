@@ -1,6 +1,6 @@
 // API endpoint - returns cached indicators for requested stocks
 
-import { kv } from '@vercel/kv'
+import { sql } from '@vercel/postgres'
 
 // Stock list (same as cron)
 const STOCKS = [
@@ -31,30 +31,15 @@ const STOCKS = [
 
 export default async function handler(req, res) {
   try {
-    // Fetch all indicator keys in parallel
-    const keys = STOCKS.map(s => `indicators:${s.ticker}`)
-    const timestamps = STOCKS.map(s => `indicators:lastUpdate:${s.ticker}`)
+    // Fetch all indicators from Postgres
+    const { rows } = await sql`SELECT * FROM stock_indicators`
     
-    const allKeys = [...keys, ...timestamps]
-    const kvData = await Promise.all(
-      allKeys.map(key => kv.get(key))
-    )
-
-    // Reconstruct data structure
     const indicators = {}
     const lastUpdates = {}
 
-    for (let i = 0; i < STOCKS.length; i++) {
-      const ticker = STOCKS[i].ticker
-      const indicatorData = kvData[i]
-      const lastUpdate = kvData[STOCKS.length + i]
-
-      if (indicatorData) {
-        indicators[ticker] = typeof indicatorData === 'string' 
-          ? JSON.parse(indicatorData) 
-          : indicatorData
-        lastUpdates[ticker] = lastUpdate
-      }
+    for (const row of rows) {
+      indicators[row.ticker] = row.data
+      lastUpdates[row.ticker] = row.updated_at
     }
 
     if (Object.keys(indicators).length === 0) {
@@ -69,6 +54,7 @@ export default async function handler(req, res) {
       total: STOCKS.length,
     })
   } catch (error) {
+    console.error('API error:', error)
     res.status(500).json({ error: error.message })
   }
 }
