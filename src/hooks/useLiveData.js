@@ -1,65 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-
-const TWELVEDATA_API_KEY = import.meta.env.VITE_TWELVEDATA_API_KEY
-console.log('🔑 TwelveData API Key:', TWELVEDATA_API_KEY ? 'present' : 'MISSING')
-const QUOTE_CACHE = {} // Browser-side, no TTL (always fresh on page load)
-const QUOTE_QUEUE = []
-let QUEUE_PROCESSING = false
-
-async function processQuoteQueue() {
-  if (QUEUE_PROCESSING || QUOTE_QUEUE.length === 0) return
-  QUEUE_PROCESSING = true
-
-  while (QUOTE_QUEUE.length > 0) {
-    const { ticker, resolve } = QUOTE_QUEUE.shift()
-    try {
-      if (!TWELVEDATA_API_KEY) {
-        console.error(`❌ No API key for ${ticker}`)
-        resolve(null)
-        return
-      }
-      
-      const url = `https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${TWELVEDATA_API_KEY}`
-      console.log(`💰 Fetching quote for ${ticker}`)
-      
-      const res = await fetch(url)
-      if (res.ok) {
-        const quote = await res.json()
-        console.log(`💰 Quote response for ${ticker}:`, quote.status || 'no status')
-        
-        if (quote.status === 'ok') {
-          resolve({
-            price: quote.close || 0,
-            changePct: quote.percent_change || 0,
-            high: quote.high || 0,
-            low: quote.low || 0,
-            volume: quote.volume || 0,
-          })
-        } else {
-          console.warn(`❌ TwelveData error for ${ticker}:`, quote.status, quote)
-          resolve(null)
-        }
-      } else {
-        console.error(`❌ HTTP error for ${ticker}:`, res.status)
-        resolve(null)
-      }
-    } catch (e) {
-      console.error(`❌ Quote fetch failed for ${ticker}:`, e)
-      resolve(null)
-    }
-    // 100ms delay between requests to stay under rate limit
-    await new Promise(r => setTimeout(r, 100))
-  }
-
-  QUEUE_PROCESSING = false
-}
-
-function fetchQuoteQueued(ticker) {
-  return new Promise(resolve => {
-    QUOTE_QUEUE.push({ ticker, resolve })
-    processQuoteQueue()
-  })
-}
+import { useState, useEffect, useCallback } from 'react'
 
 export function useLiveData(stocks) {
   const [indicators, setIndicators] = useState({})
@@ -79,7 +18,7 @@ export function useLiveData(stocks) {
         const data = await res.json()
         console.log('📊 Indicators data received:', Object.keys(data.data || {}).length, 'stocks')
         setIndicators(data.data)
-        setLastUpdate(new Date(data.lastUpdate))
+        setLastUpdate(new Date(data.cachedAt))
         return data.data
       } else {
         const error = await res.text()
@@ -91,41 +30,49 @@ export function useLiveData(stocks) {
     return {}
   }, [])
 
-  // Fetch live quotes for all stocks with deduplication
-  const fetchQuotes = useCallback(async (indicatorData) => {
-    const results = {}
-    const fetchedInThisSession = new Set()  // Track what we've fetched
-    
-    for (let i = 0; i < stocks.length; i++) {
-      const stock = stocks[i]
+  // Fetch live quotes from server-side API
+  const fetchQuotes = useCallback(async () => {
+    try {
+      // Build comma-separated ticker list
+      const tickerList = stocks.map(s => s.ticker).join(',')
       
-      // Skip if already fetched in this refresh session
-      if (fetchedInThisSession.has(stock.ticker)) {
-        console.log(`⏭️  Already fetched: ${stock.ticker}`)
-        continue
+      console.log('💰 Fetching quotes for', stocks.length, 'stocks via /api/quotes')
+      
+      const res = await fetch(`/api/quotes?tickers=${encodeURIComponent(tickerList)}`)
+      
+      if (res.ok) {
+        const data = await res.json()
+        console.log('💰 Quotes received:', data.fetched, '/', data.requested, 'stocks')
+        
+        if (data.errors && data.errors.length > 0) {
+          console.warn('💰 Some quote errors:', data.errors)
+        }
+        
+        setQuotes(data.quotes || {})
+        return data.quotes || {}
+      } else {
+        const error = await res.text()
+        console.error('💰 Quotes API error:', res.status, error)
       }
-      
-      const quote = await fetchQuoteQueued(stock.ticker)
-      if (quote) {
-        results[stock.ticker] = quote
-      }
-      
-      // Mark as fetched
-      fetchedInThisSession.add(stock.ticker)
-      
-      setProgress(Math.round(((i + 1) / stocks.length) * 100))
-      setQuotes(prev => ({ ...prev, [stock.ticker]: quote }))
+    } catch (e) {
+      console.error('Failed to fetch quotes:', e)
     }
-    return results
+    return {}
   }, [stocks])
 
-  // Load indicators on mount, then fetch quotes
+  // Load indicators and quotes in parallel
   useEffect(() => {
     ;(async () => {
       setLoading(true)
-      setProgress(0)
-      const indData = await fetchIndicators()
-      await fetchQuotes(indData)
+      setProgress(25)
+      
+      // Fetch both indicators and quotes in parallel
+      const [indData, quoteData] = await Promise.all([
+        fetchIndicators(),
+        fetchQuotes()
+      ])
+      
+      setProgress(100)
       setLoading(false)
     })()
   }, [fetchIndicators, fetchQuotes])
@@ -139,7 +86,7 @@ export function useLiveData(stocks) {
     if (ind || quote) {
       mergedData[stock.ticker] = {
         ...ind,
-        ...quote, // Quote price overrides indicator price
+        ...quote, // Quote price overrides indicator price if both exist
       }
     }
   })
@@ -147,7 +94,8 @@ export function useLiveData(stocks) {
   const refresh = async () => {
     setLoading(true)
     setProgress(0)
-    await fetchQuotes(indicators)
+    await fetchQuotes()
+    setProgress(100)
     setLoading(false)
   }
 
